@@ -291,9 +291,10 @@ function detectTipo(assunto) {
   const a = (assunto || '').toUpperCase();
   if (a.includes('TRANSFER')) return 'transferencia';
   if (a.includes('DESCARGA') || a.includes('BAIXA DE BENS') || a.includes('BAIXA ')) return 'descarga';
-  if (a.includes('CARGA DE BENS') || a.includes('CARGA ') || a.includes('AQUISI') || a.includes('DOA')) return 'carga';
   if (a.includes('ORIENT')) return 'orientacao';
-  // Nomes soltos (sem palavra-chave reconhecida) → carga
+  if (a.includes('PARECER') || a.includes('ALTERA') || a.includes('CORRE') || a.includes('PROVID') || a.includes('ENCAMINH')) return 'outros';
+  if (a.includes('CARGA DE BENS') || a.includes('CARGA ') || a.includes('AQUISI') || a.includes('DOA')) return 'carga';
+  // Nomes soltos → carga
   if (a.trim().length > 0) return 'carga';
   return 'outros';
 }
