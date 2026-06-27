@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Patrimônio — CBMRS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f5f4f1;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #dddcd6;
+    --text: #1a1916;
+    --text2: #5a5955;
+    --text3: #8a8986;
+    --red: #c0392b;
+    --red-light: #fbeaea;
+    --blue: #1a56a0;
+    --blue-light: #e8f0fb;
+    --green: #1e7c4a;
+    --green-light: #e8f5ee;
+    --amber: #b45309;
+    --amber-light: #fef3cd;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--red);
+    color: #fff;
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 4px solid #96201a;
+  }
+  .logo-cbm {
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700; letter-spacing: -1px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 18px; font-weight: 600; line-height: 1.3; }
+  header p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+  .header-right { margin-left: auto; text-align: right; font-size: 12px; opacity: 0.75; }
+
+  /* NAV ABAS */
+  .tab-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .tab-btn {
+    padding: 0.75rem 1.1rem;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    border: none; background: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--red); border-bottom-color: var(--red); font-weight: 600; }
+
+  /* MAIN */
+  main { padding: 1.5rem 2rem 3rem; max-width: 1200px; margin: 0 auto; }
+
+  /* LOADING */
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0.75rem; padding: 4rem 2rem;
+    color: var(--text3); font-size: 15px;
+  }
+  .spinner {
+    width: 22px; height: 22px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent, var(--red));
+  }
+  .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 700; color: var(--accent, var(--red)); line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* CHARTS ROW */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  @media (max-width: 640px) { .charts-row { grid-template-columns: 1fr; } }
+
+  /* CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--text3);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .card-title::before {
+    content: ''; width: 3px; height: 14px;
+    background: var(--red); border-radius: 2px;
+  }
+
+  /* TABELA */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text3); padding: 0 10px 8px;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* BADGES */
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .badge-carga { background: var(--blue-light); color: var(--blue); }
+  .badge-descarga { background: var(--amber-light); color: var(--amber); }
+  .badge-orientacao { background: var(--green-light); color: var(--green); }
+  .badge-outros { background: var(--surface2); color: var(--text2); }
+
+  /* FILTROS */
+  .filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1rem; align-items: center; }
+  .filter-label { font-size: 12px; color: var(--text3); }
+  .fbtn {
+    font-size: 12px; padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--surface); color: var(--text2);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .fbtn:hover { border-color: var(--red); color: var(--red); }
+  .fbtn.active { background: var(--red); color: #fff; border-color: var(--red); }
+
+  /* SEARCH */
+  .search-wrap { margin-bottom: 1rem; }
+  .search-wrap input {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px; color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-wrap input:focus { border-color: var(--red); }
+
+  /* LEGEND */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 3rem; color: var(--text3); font-size: 14px; }
+
+  /* YEAR BADGE */
+  .year-pill {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 1px 7px; border-radius: 3px;
+    background: var(--red-light); color: var(--red);
+  }
+
+  /* RESUMO ANOS */
+  .anos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 12px; }
+  .ano-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.25rem;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .ano-card:hover { border-color: var(--red); }
+  .ano-card h3 { font-size: 22px; font-weight: 700; color: var(--red); }
+  .ano-card p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  /* RESPONSIVO */
+  @media (max-width: 480px) {
+    header { padding: 1rem; }
+    main { padding: 1rem 1rem 3rem; }
+    .kpi-value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-cbm">🔥</div>
+  <div>
+    <h1>Controle PROAS — Patrimônio</h1>
+    <p>Corpo de Bombeiros Militar do Rio Grande do Sul · DLP/DA</p>
+  </div>
+  <div class="header-right" id="update-time">Carregando...</div>
+</header>
+
+<div class="tab-bar" id="tab-bar">
+  <button class="tab-btn active" data-tab="visao-geral">Visão Geral</button>
+  <button class="tab-btn" data-tab="2026">PROAs 2026</button>
+  <button class="tab-btn" data-tab="2025">PROAs 2025</button>
+  <button class="tab-btn" data-tab="2024">PROAs 2024</button>
+  <button class="tab-btn" data-tab="2023">PROAs 2023</button>
+  <button class="tab-btn" data-tab="2022">PROAs 2022</button>
+</div>
+
+<main>
+  <div id="content">
+    <div class="loading"><div class="spinner"></div> Carregando dados da planilha...</div>
+  </div>
+</main>
+
+<script>
+const SHEET_ID = '1G8kFeH8zA21dZ1zttitBA3z8LsE834kz-NwlYR9jhec';
+const GIDS = {
+  '2026': '1904104588',
+  '2025': '1374166435',
+  '2024': '1199490768',
+  '2023': '1223100757',
+  '2022': '663650495',
+  'sei2026': '1602148825'
+};
+
+const COLORS = {
+  carga: '#1a56a0',
+  descarga: '#b45309',
+  orientacao: '#1e7c4a',
+  outros: '#6b7280'
+};
+
+let allData = {};
+let activeTab = 'visao-geral';
+let activeFilter = 'todos';
+let searchTerm = '';
+let charts = {};
+
+function csvUrl(gid) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+  return lines.slice(1).map(line => {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') inQ = !inQ;
+      else if (c === ',' && !inQ) { cols.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur.trim());
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (cols[i] || '').replace(/^"|"$/g, ''); });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v.trim() !== ''));
+}
+
+function detectTipo(assunto) {
+  const a = (assunto || '').toUpperCase();
+  if (a.includes('CARGA DE BENS') || a.includes('CARGA ')) return 'carga';
+  if (a.includes('DESCARGA')) return 'descarga';
+  if (a.includes('ORIENT')) return 'orientacao';
+  return 'outros';
+}
+
+function badgeHtml(tipo) {
+  const map = { carga:'badge-carga', descarga:'badge-descarga', orientacao:'badge-orientacao', outros:'badge-outros' };
+  const label = { carga:'Carga', descarga:'Descarga', orientacao:'Orientação', outros:'Outro' };
+  return `<span class="badge ${map[tipo]}">${label[tipo]}</span>`;
+}
+
+async function fetchSheet(gid) {
+  const url = csvUrl(gid);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Erro ao buscar aba gid=' + gid);
+  const text = await res.text();
+  return parseCSV(text);
+}
+
+async function loadAll() {
+  try {
+    const [r2026, r2025, r2024, r2023, r2022] = await Promise.all([
+      fetchSheet(GIDS['2026']),
+      fetchSheet(GIDS['2025']),
+      fetchSheet(GIDS['2024']),
+      fetchSheet(GIDS['2023']),
+      fetchSheet(GIDS['2022']),
+    ]);
+    allData = { '2026': r2026, '2025': r2025, '2024': r2024, '2023': r2023, '2022': r2022 };
+    document.getElementById('update-time').textContent = 'Atualizado: ' + new Date().toLocaleString('pt-BR');
+    renderTab('visao-geral');
+  } catch(e) {
+    document.getElementById('content').innerHTML = `
+      <div class="empty">
+        <p>⚠️ Não foi possível carregar os dados.</p>
+        <p style="margin-top:8px;font-size:12px;color:#999">${e.message}</p>
+        <p style="margin-top:8px;font-size:12px;">Verifique se a planilha está publicada publicamente.</p>
+      </div>`;
+  }
+}
+
+function getRows(year) {
+  const rows = allData[year] || [];
+  // Detecta colunas dinamicamente
+  return rows.map(r => {
+    const keys = Object.keys(r);
+    return {
+      entrada: r[keys[0]] || '',
+      sei: r[keys[1]] || '',
+      bbm: r[keys[2]] || '',
+      assunto: r[keys[3]] || '',
+      resp: r[keys[4]] || '',
+      em: r[keys[5]] || '',
+      obs: r[keys[6]] || '',
+      tipo: detectTipo(r[keys[3]] || '')
+    };
+  });
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderTab(tab) {
+  activeTab = tab;
+  activeFilter = 'todos';
+  searchTerm = '';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  Object.keys(charts).forEach(destroyChart);
+
+  if (tab === 'visao-geral') renderGeral();
+  else renderAno(tab);
+}
+
+function renderGeral() {
+  const anos = ['2022','2023','2024','2025','2026'];
+  const totais = anos.map(a => getRows(a).length);
+  const tiposTotais = { carga:0, descarga:0, orientacao:0, outros:0 };
+  anos.forEach(a => getRows(a).forEach(r => { tiposTotais[r.tipo] = (tiposTotais[r.tipo]||0)+1; }));
+  const total = totais.reduce((s,v) => s+v, 0);
+
+  const html = `
+    <div class="kpi-grid" style="margin-bottom:1.5rem">
+      <div class="kpi" style="--accent:#c0392b"><div class="kpi-label">Total geral</div><div class="kpi-value">${total}</div><div class="kpi-sub">2022 – 2026</div></div>
+      <div class="kpi" style="--accent:#1a56a0"><div class="kpi-label">Cargas</div><div class="kpi-value">${tiposTotais.carga}</div><div class="kpi-sub">${Math.round(tiposTotais.carga/total*100)}% do total</div></div>
+      <div class="kpi" style="--accent:#b45309"><div class="kpi-label">Descargas</div><div class="kpi-value">${tiposTotais.descarga}</div><div class="kpi-sub">${Math.round(tiposTotais.descarga/total*100)}% do total</div></div>
+      <div class="kpi" style="--accent:#1e7c4a"><div class="kpi-label">Orientações</div><div class="kpi-value">${tiposTotais.orientacao}</div><div class="kpi-sub">${Math.round(tiposTotais.orientacao/total*100)}% do total</div></div>
+    </div>
+
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">PROAs por ano</div>
+        <div style="position:relative;height:220px"><canvas id="chart-anos" role="img" aria-label="PROAs por ano"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tipo de operação (total)</div>
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:#1a56a0"></span>Carga ${tiposTotais.carga}</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Descarga ${tiposTotais.descarga}</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#1e7c4a"></span>Orientação ${tiposTotais.orientacao}</div>
+          ${tiposTotais.outros > 0 ? `<div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Outros ${tiposTotais.outros}</div>` : ''}
+        </div>
+        <div style="position:relative;height:200px"><canvas id="chart-tipos" role="img" aria-label="Tipos de operação"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Clique num ano para ver os detalhes</div>
+      <div class="anos-grid">
+        ${anos.map((a,i) => `
+          <div class="ano-card" onclick="switchTab('${a}')">
+            <h3>${a}</h3>
+            <p>${totais[i]} processo${totais[i]!==1?'s':''} registrado${totais[i]!==1?'s':''}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('content').innerHTML = html;
+
+  charts['anos'] = new Chart(document.getElementById('chart-anos'), {
+    type: 'bar',
+    data: {
+      labels: anos,
+      datasets: [{ data: totais, backgroundColor: '#c0392b', borderRadius: 5, maxBarThickness: 40 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 12 } } },
+        y: { grid: { color: '#e5e4df' }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  const tiposData = [tiposTotais.carga, tiposTotais.descarga, tiposTotais.orientacao, tiposTotais.outros].filter(v=>v>0);
+  const tiposLabels = ['Carga','Descarga','Orientação','Outros'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.orientacao,tiposTotais.outros][i]>0);
+  const tiposCores = ['#1a56a0','#b45309','#1e7c4a','#6b7280'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.orientacao,tiposTotais.outros][i]>0);
+
+  charts['tipos'] = new Chart(document.getElementById('chart-tipos'), {
+    type: 'doughnut',
+    data: { labels: tiposLabels, datasets: [{ data: tiposData, backgroundColor: tiposCores, borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderAno(ano) {
+  const rows = getRows(ano);
+  const tipos = { carga:0, descarga:0, orientacao:0, outros:0 };
+  const bbmCount = {};
+  rows.forEach(r => {
+    tipos[r.tipo] = (tipos[r.tipo]||0)+1;
+    const b = r.bbm.trim().toUpperCase() || 'N/D';
+    bbmCount[b] = (bbmCount[b]||0)+1;
+  });
+
+  const bbmTop = Object.entries(bbmCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const html = `
+    <div class="kpi-grid" style="margin-bottom:1.5rem">
+      <div class="kpi" style="--accent:#c0392b"><div class="kpi-label">Total ${ano}</div><div class="kpi-value">${rows.length}</div><div class="kpi-sub">processos</div></div>
+      <div class="kpi" style="--accent:#1a56a0"><div class="kpi-label">Cargas</div><div class="kpi-value">${tipos.carga}</div><div class="kpi-sub">${rows.length?Math.round(tipos.carga/rows.length*100):0}%</div></div>
+      <div class="kpi" style="--accent:#b45309"><div class="kpi-label">Descargas</div><div class="kpi-value">${tipos.descarga}</div><div class="kpi-sub">${rows.length?Math.round(tipos.descarga/rows.length*100):0}%</div></div>
+      <div class="kpi" style="--accent:#1e7c4a"><div class="kpi-label">Orientações</div><div class="kpi-value">${tipos.orientacao}</div><div class="kpi-sub">${rows.length?Math.round(tipos.orientacao/rows.length*100):0}%</div></div>
+    </div>
+
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">Tipo de operação</div>
+        <div class="legend">
+          ${tipos.carga?`<div class="legend-item"><span class="legend-dot" style="background:#1a56a0"></span>Carga ${tipos.carga}</div>`:''}
+          ${tipos.descarga?`<div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Descarga ${tipos.descarga}</div>`:''}
+          ${tipos.orientacao?`<div class="legend-item"><span class="legend-dot" style="background:#1e7c4a"></span>Orientação ${tipos.orientacao}</div>`:''}
+          ${tipos.outros?`<div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Outros ${tipos.outros}</div>`:''}
+        </div>
+        <div style="position:relative;height:180px"><canvas id="chart-tipo-${ano}" role="img" aria-label="Tipos ${ano}"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top BBMs de origem</div>
+        <div style="position:relative;height:${Math.max(180, bbmTop.length*38)}px"><canvas id="chart-bbm-${ano}" role="img" aria-label="BBMs ${ano}"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Registro de processos — ${ano}</div>
+      <div class="filter-row">
+        <span class="filter-label">Filtrar:</span>
+        <button class="fbtn active" onclick="setFilter('todos','${ano}')">Todos (${rows.length})</button>
+        ${tipos.carga?`<button class="fbtn" onclick="setFilter('carga','${ano}')">Carga (${tipos.carga})</button>`:''}
+        ${tipos.descarga?`<button class="fbtn" onclick="setFilter('descarga','${ano}')">Descarga (${tipos.descarga})</button>`:''}
+        ${tipos.orientacao?`<button class="fbtn" onclick="setFilter('orientacao','${ano}')">Orientação (${tipos.orientacao})</button>`:''}
+        ${tipos.outros?`<button class="fbtn" onclick="setFilter('outros','${ano}')">Outros (${tipos.outros})</button>`:''}
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="search-${ano}" placeholder="Buscar por assunto, SEI, BBM..." oninput="setSearch(this.value,'${ano}')">
+      </div>
+      <div class="table-wrap" id="table-${ano}"></div>
+    </div>
+  `;
+  document.getElementById('content').innerHTML = html;
+  renderTabela(ano, rows);
+
+  // Chart tipos
+  const td = [tipos.carga, tipos.descarga, tipos.orientacao, tipos.outros].filter(v=>v>0);
+  const tl = ['Carga','Descarga','Orientação','Outros'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.orientacao,tipos.outros][i]>0);
+  const tc = ['#1a56a0','#b45309','#1e7c4a','#6b7280'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.orientacao,tipos.outros][i]>0);
+  charts[`tipo-${ano}`] = new Chart(document.getElementById(`chart-tipo-${ano}`), {
+    type: 'doughnut',
+    data: { labels: tl, datasets: [{ data: td, backgroundColor: tc, borderWidth: 0 }] },
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{display:false} } }
+  });
+
+  // Chart BBMs
+  charts[`bbm-${ano}`] = new Chart(document.getElementById(`chart-bbm-${ano}`), {
+    type: 'bar',
+    data: {
+      labels: bbmTop.map(b=>b[0]),
+      datasets: [{ data: bbmTop.map(b=>b[1]), backgroundColor: '#c0392b', borderRadius:4, maxBarThickness:22 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ legend:{display:false} },
+      scales: {
+        x: { grid:{color:'#e5e4df'}, ticks:{font:{size:11}} },
+        y: { grid:{display:false}, ticks:{font:{size:11}} }
+      }
+    }
+  });
+}
+
+function renderTabela(ano, allRows) {
+  const filtered = allRows.filter(r => {
+    const matchTipo = activeFilter === 'todos' || r.tipo === activeFilter;
+    const q = searchTerm.toLowerCase();
+    const matchSearch = !q || r.assunto.toLowerCase().includes(q) || r.sei.toLowerCase().includes(q) || r.bbm.toLowerCase().includes(q) || r.resp.toLowerCase().includes(q);
+    return matchTipo && matchSearch;
+  });
+
+  const div = document.getElementById(`table-${ano}`);
+  if (!div) return;
+  if (!filtered.length) { div.innerHTML = '<div class="empty">Nenhum registro encontrado.</div>'; return; }
+
+  div.innerHTML = `<table>
+    <thead><tr>
+      <th>Entrada</th><th>Nº SEI</th><th>BBM Origem</th><th>Tipo</th><th>Assunto</th><th>Respondido por</th><th>Em</th>
+    </tr></thead>
+    <tbody>
+      ${filtered.map(r => `<tr>
+        <td style="white-space:nowrap;color:#777;font-size:12px">${r.entrada}</td>
+        <td style="white-space:nowrap;font-size:12px;color:#1a56a0">${r.sei}</td>
+        <td style="white-space:nowrap;font-size:12px">${r.bbm}</td>
+        <td>${badgeHtml(r.tipo)}</td>
+        <td style="font-size:12px">${r.assunto}</td>
+        <td style="white-space:nowrap;font-size:12px">${r.resp}</td>
+        <td style="white-space:nowrap;font-size:12px;color:#777">${r.em}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function setFilter(tipo, ano) {
+  activeFilter = tipo;
+  document.querySelectorAll('.fbtn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().startsWith(tipo === 'todos' ? 'todos' : tipo)));
+  renderTabela(ano, getRows(ano));
+}
+
+function setSearch(val, ano) {
+  searchTerm = val;
+  renderTabela(ano, getRows(ano));
+}
+
+function switchTab(tab) {
+  renderTab(tab);
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+}
+
+// Eventos das abas
+document.getElementById('tab-bar').addEventListener('click', e => {
+  if (e.target.classList.contains('tab-btn')) switchTab(e.target.dataset.tab);
+});
+
+// Inicia
+loadAll();
+</script>
+</body>
+</html>
