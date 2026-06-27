@@ -287,8 +287,8 @@ function parseCSV(text) {
 
 function detectTipo(assunto) {
   const a = (assunto || '').toUpperCase();
+  if (a.includes('DESCARGA') || a.includes('BAIXA DE BENS') || a.includes('BAIXA ')) return 'descarga';
   if (a.includes('CARGA DE BENS') || a.includes('CARGA ')) return 'carga';
-  if (a.includes('DESCARGA')) return 'descarga';
   if (a.includes('ORIENT')) return 'orientacao';
   return 'outros';
 }
