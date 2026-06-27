@@ -151,6 +151,7 @@
   .badge-carga { background: var(--blue-light); color: var(--blue); }
   .badge-descarga { background: var(--amber-light); color: var(--amber); }
   .badge-orientacao { background: var(--green-light); color: var(--green); }
+  .badge-transferencia { background: #f0e8fb; color: #6b21a8; }
   .badge-outros { background: var(--surface2); color: var(--text2); }
 
   /* FILTROS */
@@ -254,6 +255,7 @@ const COLORS = {
   carga: '#1a56a0',
   descarga: '#b45309',
   orientacao: '#1e7c4a',
+  transferencia: '#6b21a8',
   outros: '#6b7280'
 };
 
@@ -287,15 +289,18 @@ function parseCSV(text) {
 
 function detectTipo(assunto) {
   const a = (assunto || '').toUpperCase();
+  if (a.includes('TRANSFER')) return 'transferencia';
   if (a.includes('DESCARGA') || a.includes('BAIXA DE BENS') || a.includes('BAIXA ')) return 'descarga';
-  if (a.includes('CARGA DE BENS') || a.includes('CARGA ')) return 'carga';
+  if (a.includes('CARGA DE BENS') || a.includes('CARGA ') || a.includes('AQUISI') || a.includes('DOA')) return 'carga';
   if (a.includes('ORIENT')) return 'orientacao';
+  // Nomes soltos (sem palavra-chave reconhecida) → carga
+  if (a.trim().length > 0) return 'carga';
   return 'outros';
 }
 
 function badgeHtml(tipo) {
-  const map = { carga:'badge-carga', descarga:'badge-descarga', orientacao:'badge-orientacao', outros:'badge-outros' };
-  const label = { carga:'Carga', descarga:'Descarga', orientacao:'Orientação', outros:'Outro' };
+  const map = { carga:'badge-carga', descarga:'badge-descarga', orientacao:'badge-orientacao', transferencia:'badge-transferencia', outros:'badge-outros' };
+  const label = { carga:'Carga', descarga:'Descarga', orientacao:'Orientação', transferencia:'Transferência', outros:'Outro' };
   return `<span class="badge ${map[tipo]}">${label[tipo]}</span>`;
 }
 
@@ -365,7 +370,7 @@ function renderTab(tab) {
 function renderGeral() {
   const anos = ['2022','2023','2024','2025','2026'];
   const totais = anos.map(a => getRows(a).length);
-  const tiposTotais = { carga:0, descarga:0, orientacao:0, outros:0 };
+  const tiposTotais = { carga:0, descarga:0, orientacao:0, transferencia:0, outros:0 };
   anos.forEach(a => getRows(a).forEach(r => { tiposTotais[r.tipo] = (tiposTotais[r.tipo]||0)+1; }));
   const total = totais.reduce((s,v) => s+v, 0);
 
@@ -374,6 +379,7 @@ function renderGeral() {
       <div class="kpi" style="--accent:#c0392b"><div class="kpi-label">Total geral</div><div class="kpi-value">${total}</div><div class="kpi-sub">2022 – 2026</div></div>
       <div class="kpi" style="--accent:#1a56a0"><div class="kpi-label">Cargas</div><div class="kpi-value">${tiposTotais.carga}</div><div class="kpi-sub">${Math.round(tiposTotais.carga/total*100)}% do total</div></div>
       <div class="kpi" style="--accent:#b45309"><div class="kpi-label">Descargas</div><div class="kpi-value">${tiposTotais.descarga}</div><div class="kpi-sub">${Math.round(tiposTotais.descarga/total*100)}% do total</div></div>
+      <div class="kpi" style="--accent:#6b21a8"><div class="kpi-label">Transferências</div><div class="kpi-value">${tiposTotais.transferencia}</div><div class="kpi-sub">${Math.round(tiposTotais.transferencia/total*100)}% do total</div></div>
       <div class="kpi" style="--accent:#1e7c4a"><div class="kpi-label">Orientações</div><div class="kpi-value">${tiposTotais.orientacao}</div><div class="kpi-sub">${Math.round(tiposTotais.orientacao/total*100)}% do total</div></div>
     </div>
 
@@ -387,6 +393,7 @@ function renderGeral() {
         <div class="legend">
           <div class="legend-item"><span class="legend-dot" style="background:#1a56a0"></span>Carga ${tiposTotais.carga}</div>
           <div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Descarga ${tiposTotais.descarga}</div>
+          <div class="legend-item"><span class="legend-dot" style="background:#6b21a8"></span>Transferência ${tiposTotais.transferencia}</div>
           <div class="legend-item"><span class="legend-dot" style="background:#1e7c4a"></span>Orientação ${tiposTotais.orientacao}</div>
           ${tiposTotais.outros > 0 ? `<div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Outros ${tiposTotais.outros}</div>` : ''}
         </div>
@@ -424,9 +431,9 @@ function renderGeral() {
     }
   });
 
-  const tiposData = [tiposTotais.carga, tiposTotais.descarga, tiposTotais.orientacao, tiposTotais.outros].filter(v=>v>0);
-  const tiposLabels = ['Carga','Descarga','Orientação','Outros'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.orientacao,tiposTotais.outros][i]>0);
-  const tiposCores = ['#1a56a0','#b45309','#1e7c4a','#6b7280'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.orientacao,tiposTotais.outros][i]>0);
+  const tiposData = [tiposTotais.carga, tiposTotais.descarga, tiposTotais.transferencia, tiposTotais.orientacao, tiposTotais.outros].filter(v=>v>0);
+  const tiposLabels = ['Carga','Descarga','Transferência','Orientação','Outros'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.transferencia,tiposTotais.orientacao,tiposTotais.outros][i]>0);
+  const tiposCores = ['#1a56a0','#b45309','#6b21a8','#1e7c4a','#6b7280'].filter((_,i) => [tiposTotais.carga,tiposTotais.descarga,tiposTotais.transferencia,tiposTotais.orientacao,tiposTotais.outros][i]>0);
 
   charts['tipos'] = new Chart(document.getElementById('chart-tipos'), {
     type: 'doughnut',
@@ -440,7 +447,7 @@ function renderGeral() {
 
 function renderAno(ano) {
   const rows = getRows(ano);
-  const tipos = { carga:0, descarga:0, orientacao:0, outros:0 };
+  const tipos = { carga:0, descarga:0, orientacao:0, transferencia:0, outros:0 };
   const bbmCount = {};
   rows.forEach(r => {
     tipos[r.tipo] = (tipos[r.tipo]||0)+1;
@@ -455,6 +462,7 @@ function renderAno(ano) {
       <div class="kpi" style="--accent:#c0392b"><div class="kpi-label">Total ${ano}</div><div class="kpi-value">${rows.length}</div><div class="kpi-sub">processos</div></div>
       <div class="kpi" style="--accent:#1a56a0"><div class="kpi-label">Cargas</div><div class="kpi-value">${tipos.carga}</div><div class="kpi-sub">${rows.length?Math.round(tipos.carga/rows.length*100):0}%</div></div>
       <div class="kpi" style="--accent:#b45309"><div class="kpi-label">Descargas</div><div class="kpi-value">${tipos.descarga}</div><div class="kpi-sub">${rows.length?Math.round(tipos.descarga/rows.length*100):0}%</div></div>
+      <div class="kpi" style="--accent:#6b21a8"><div class="kpi-label">Transferências</div><div class="kpi-value">${tipos.transferencia}</div><div class="kpi-sub">${rows.length?Math.round(tipos.transferencia/rows.length*100):0}%</div></div>
       <div class="kpi" style="--accent:#1e7c4a"><div class="kpi-label">Orientações</div><div class="kpi-value">${tipos.orientacao}</div><div class="kpi-sub">${rows.length?Math.round(tipos.orientacao/rows.length*100):0}%</div></div>
     </div>
 
@@ -464,6 +472,7 @@ function renderAno(ano) {
         <div class="legend">
           ${tipos.carga?`<div class="legend-item"><span class="legend-dot" style="background:#1a56a0"></span>Carga ${tipos.carga}</div>`:''}
           ${tipos.descarga?`<div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Descarga ${tipos.descarga}</div>`:''}
+          ${tipos.transferencia?`<div class="legend-item"><span class="legend-dot" style="background:#6b21a8"></span>Transferência ${tipos.transferencia}</div>`:''}
           ${tipos.orientacao?`<div class="legend-item"><span class="legend-dot" style="background:#1e7c4a"></span>Orientação ${tipos.orientacao}</div>`:''}
           ${tipos.outros?`<div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span>Outros ${tipos.outros}</div>`:''}
         </div>
@@ -482,6 +491,7 @@ function renderAno(ano) {
         <button class="fbtn active" onclick="setFilter('todos','${ano}')">Todos (${rows.length})</button>
         ${tipos.carga?`<button class="fbtn" onclick="setFilter('carga','${ano}')">Carga (${tipos.carga})</button>`:''}
         ${tipos.descarga?`<button class="fbtn" onclick="setFilter('descarga','${ano}')">Descarga (${tipos.descarga})</button>`:''}
+        ${tipos.transferencia?`<button class="fbtn" onclick="setFilter('transferencia','${ano}')">Transferência (${tipos.transferencia})</button>`:''}
         ${tipos.orientacao?`<button class="fbtn" onclick="setFilter('orientacao','${ano}')">Orientação (${tipos.orientacao})</button>`:''}
         ${tipos.outros?`<button class="fbtn" onclick="setFilter('outros','${ano}')">Outros (${tipos.outros})</button>`:''}
       </div>
@@ -495,9 +505,9 @@ function renderAno(ano) {
   renderTabela(ano, rows);
 
   // Chart tipos
-  const td = [tipos.carga, tipos.descarga, tipos.orientacao, tipos.outros].filter(v=>v>0);
-  const tl = ['Carga','Descarga','Orientação','Outros'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.orientacao,tipos.outros][i]>0);
-  const tc = ['#1a56a0','#b45309','#1e7c4a','#6b7280'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.orientacao,tipos.outros][i]>0);
+  const td = [tipos.carga, tipos.descarga, tipos.transferencia, tipos.orientacao, tipos.outros].filter(v=>v>0);
+  const tl = ['Carga','Descarga','Transferência','Orientação','Outros'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.transferencia,tipos.orientacao,tipos.outros][i]>0);
+  const tc = ['#1a56a0','#b45309','#6b21a8','#1e7c4a','#6b7280'].filter((_,i)=>[tipos.carga,tipos.descarga,tipos.transferencia,tipos.orientacao,tipos.outros][i]>0);
   charts[`tipo-${ano}`] = new Chart(document.getElementById(`chart-tipo-${ano}`), {
     type: 'doughnut',
     data: { labels: tl, datasets: [{ data: td, backgroundColor: tc, borderWidth: 0 }] },
